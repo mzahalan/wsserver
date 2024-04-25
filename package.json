@@ -9,6 +9,7 @@
   "author": "Mike Zahalan",
   "license": "ISC",
   "dependencies": {
+    "ansi-to-html": "^0.7.2",
     "express": "^4.19.2",
     "telnet-client": "^2.2.0",
     "ws": "^8.16.0"
