@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Websocket server",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,6 +12,7 @@
   "dependencies": {
     "ansi-to-html": "^0.7.2",
     "express": "^4.19.2",
+    "strip-ansi": "^7.1.0",
     "telnet-client": "^2.2.0",
     "ws": "^8.16.0"
   }

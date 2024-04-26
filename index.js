@@ -1,13 +1,14 @@
-const express = require('express')
-const WebSocket = require('ws')
-const http = require('http')
-const { Telnet } = require('telnet-client') 
-const Convert = require('ansi-to-html')
+import express from 'express'
+import {WebSocketServer} from 'ws'
+import http from 'http'
+import { Telnet } from 'telnet-client'
+import Convert from 'ansi-to-html'
+import stripAnsi from 'strip-ansi'
 const CONVERTER = new Convert({newline:true});
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({server});
+const wss = new WebSocketServer({server});
 const PORT = 9081
 const STRIP_CHARS=[0x0A]
 
@@ -25,8 +26,9 @@ wss.on('connection', (ws) => {
     
     // Helper function to wrap outgoing strings
     const sendToClient = (msg) => {
-        data = {
-            html: msg
+        let data = {
+            text: stripAnsi(msg.replace(/&nbsp;/g, " ").replace(/\r/g, "\n")),
+            html: CONVERTER.toHtml(msg)
         }
         ws.send(JSON.stringify(data))
     }
@@ -52,7 +54,7 @@ wss.on('connection', (ws) => {
             }
         }
 
-        sendToClient(CONVERTER.toHtml(sendMsg))
+        sendToClient(sendMsg)
     })
 
     mudCon.on('timeout', () => {
