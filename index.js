@@ -22,11 +22,19 @@ const PARAMS = {
 
 wss.on('connection', (ws) => {
     console.log('Client Connected - setting up mud connect');
+    
+    // Helper function to wrap outgoing strings
+    const sendToClient = (msg) => {
+        data = {
+            html: msg
+        }
+        ws.send(JSON.stringify(data))
+    }
 
     let mudCon = new Telnet()
     
     mudCon.on('connect', data => {
-        ws.send('connected')
+        sendToClient('Connected')
     })
 
     mudCon.on('data', data => {
@@ -44,7 +52,7 @@ wss.on('connection', (ws) => {
             }
         }
 
-        ws.send(CONVERTER.toHtml(sendMsg))
+        sendToClient(CONVERTER.toHtml(sendMsg))
     })
 
     mudCon.on('timeout', () => {
@@ -52,14 +60,16 @@ wss.on('connection', (ws) => {
     })
 
     mudCon.on('close', () => {
-        ws.send('connection closed')
+        sendToClient('Connect Closed')
         ws.close()
     })
 
     mudCon.connect(PARAMS)
 
     ws.on('message', (message) => {
-        mudCon.send(message)
+
+        let data = JSON.parse(message)
+        mudCon.send(data.message)
     });
 
     ws.on('close', () => {
