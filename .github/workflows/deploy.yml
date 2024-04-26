@@ -1,0 +1,25 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+    
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: executing remote commands
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        port: ${{ secrets.SSH_PORT }}
+        username: ${{ secrets.SSH_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd ${{ secrets.WORK_DIR }}
+          git pull
+          npm install
+          pm2 restart mudconnect
