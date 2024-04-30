@@ -9,7 +9,7 @@ const CONVERTER = new Convert({newline:true});
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({server});
-const PORT = 9181
+const PORT = 9081
 const STRIP_CHARS=[0x0A]
 
 const PARAMS = {
