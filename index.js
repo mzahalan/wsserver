@@ -9,7 +9,7 @@ const CONVERTER = new Convert({newline:true});
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocketServer({server});
-const PORT = 9081
+const PORT = 9181
 const STRIP_CHARS=[0x0A]
 
 const PARAMS = {
@@ -27,8 +27,17 @@ wss.on('connection', (ws) => {
     // Helper function to wrap outgoing strings
     const sendToClient = (msg) => {
         let data = {
+            type: "command",
             text: stripAnsi(msg.replace(/&nbsp;/g, " ").replace(/\r/g, "\n")),
             html: CONVERTER.toHtml(msg)
+        }
+        ws.send(JSON.stringify(data))
+    }
+
+    const sendControlToClient = (msg) => {
+        let data = {
+            type: "control",
+            text: msg
         }
         ws.send(JSON.stringify(data))
     }
@@ -69,9 +78,20 @@ wss.on('connection', (ws) => {
     mudCon.connect(PARAMS)
 
     ws.on('message', (message) => {
-
-        let data = JSON.parse(message)
-        mudCon.send(data.message)
+        if(message != '') {
+            try{
+                let data = JSON.parse(message)
+                if(data.type == 'command') {
+                    mudCon.send(data.message)
+                } else if( data.type == 'control') {
+                    if(data.text == 'ping') {
+                        sendControlToClient('pong')
+                    }
+                } else {
+                    console.log("Bad Message From Client: " + JSON.stringify(data))
+                }
+            } catch(e) { console.log("Bad Message From Client: " + message) }
+        }
     });
 
     ws.on('close', () => {
