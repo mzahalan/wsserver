@@ -29,7 +29,7 @@ wss.on('connection', (ws) => {
         let data = {
             type: "command",
             text: stripAnsi(msg.replace(/&nbsp;/g, " ").replace(/\r/g, "\n")),
-            html: CONVERTER.toHtml(msg)
+            html: CONVERTER.toHtml(msg.replace(/</g, "&lt;").replace(/>/g, "&gt;"))
         }
         ws.send(JSON.stringify(data))
     }
