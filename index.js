@@ -37,7 +37,8 @@ wss.on('connection', (ws) => {
     const sendControlToClient = (msg) => {
         let data = {
             type: "control",
-            text: msg
+            text: msg,
+            numClients: wss.clients.size
         }
         ws.send(JSON.stringify(data))
     }
@@ -84,7 +85,7 @@ wss.on('connection', (ws) => {
                 if(data.type == 'command') {
                     mudCon.send(data.message)
                 } else if( data.type == 'control') {
-                    if(data.text == 'ping') {
+                    if(data.message == 'ping') {
                         sendControlToClient('pong')
                     }
                 } else {
