@@ -22,4 +22,4 @@ jobs:
           cd ${{ secrets.WORK_DIR }}
           git pull
           npm install
-          pm2 restart mudconnect
+          pm2 restart MudSocket
