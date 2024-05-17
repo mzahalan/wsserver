@@ -29,8 +29,8 @@ function parseAreaBlock(area) {
     }
 }
 
+// db.c load_rooms()
 function parseRoomsBlock(area) {
-    //A Room is a list of lines
     // the first line is #<vnum>
     // the last line is S
     area.rooms = []
@@ -59,10 +59,8 @@ function parseRoomsBlock(area) {
         
         // Scan to Start of Room (#XXXX)
         if(! /^#\d+$/.test(line)) {
-            //console.log(`PARSING ERROR: ${area.name} :: Messed up Room Block`)
-            area.rooms[area.rooms.length-1].unparsed.push(line)
-            i++
-            continue
+            console.log(`PARSING ERROR: ${area.name} :: Expected Room #VNUM but found :: ${line}`)
+            return
         }
 
         room.vnum = lines[i].trim().replace("#", '')
@@ -71,8 +69,7 @@ function parseRoomsBlock(area) {
         room.title = lines[i].replace('~','').trim()
         i++
 
-        // It might be more efficient to get startIndex, endIndex
-        // then do a subarray().join('\n)
+        // It might be more efficient to get (startIndex, endIndex) then do a subarray().join('\n)
         room.description = ''
         while('~' != lines[i].trim()) {
             room.description = room.description.concat(lines[i].trim(), '\n')
@@ -80,14 +77,28 @@ function parseRoomsBlock(area) {
         }
         i++
 
-        // Flags: <flag> <flags> <flag>
+        // Flags: <area_number> <flags> <sector type>
+        // sector types: merc.h ~1322
         let flags = lines[i].split(' ')
         if(flags.length != 3) {
             console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: bad flags`)
+            return
         }
+        room.sector_type = flags[2].trim()
+        room.flags = flags[1]
         i++
 
         room.unparsed = []
+
+        while('S' != lines[i].trim()) {
+            room.unparsed.push(lines[i].trim())
+            i++
+            if(i >= lines.length) {
+                console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: Missing S`)
+            }
+        }
+        i++
+
         area.rooms.push(room)
     }
 }
@@ -133,7 +144,6 @@ function areaToObject(area) {
 }
 
 async function parseArea(areaFile) {
-    console.log(`Parsing: ${areaFile}`)
     const file = readline.createInterface({
         input: fs.createReadStream(AREA_DIR.concat(areaFile)),
         output: process.stdout,
@@ -195,10 +205,13 @@ async function parseAreas() {
     for await (const line of file){
         if(line.endsWith(AREA_EXT)) {
             if(EXCLUDE_LIST.includes(line)) {
-                console.log("SKIPPING: " + line)
+                console.log("    SKIPPING: " + line)
                 continue
             }
+
+            process.stdout.write(`  ${line}`)
             areas.push(await parseArea(line))
+            process.stdout.write(' \u2713\n')
         }      
     }
     return areas  

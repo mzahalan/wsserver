@@ -17,7 +17,7 @@ function printRoomSection(area) {
         console.log(`${room.vnum} :: ${room.title}`)
         console.log(room.description)
         console.log(room.unparsed)
-
+        console.log(room.flags)
     })
 }
 
@@ -32,7 +32,5 @@ function printAllRoomBlocks(areas) {
 
 let trollden = await parseArea('unplugged.are')
 printRoomSection(trollden)
-
-console.log(trollden)
 
 
