@@ -211,7 +211,7 @@ async function parseAreas() {
 
             process.stdout.write(`  ${line}`)
             areas.push(await parseArea(line))
-            process.stdout.write(' \u2713\n')
+            process.stdout.write(' \u001b[32m\u2713\u001b[0m\n')
         }      
     }
     return areas  
