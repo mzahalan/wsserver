@@ -141,6 +141,10 @@ function areaToObject(area) {
     parseSpecialsBlock(area)
     parseHelps(area)
     parseSocials(area)
+
+    // After we parse the raw text into the object
+    // we can delete it.
+    delete area['#AREA']
 }
 
 async function parseArea(areaFile) {

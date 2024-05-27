@@ -12,6 +12,10 @@ app.use("/api", routes)
 // Attach Websocket handling
 mudsocket(server)
 
+// Parse the Area files
+import { parseAreas } from './AreaParser.js';
+app.set('mud_areas', await parseAreas())
+
 // GO GO GO
 const PORT = 9081
 server.listen(PORT, () => {
