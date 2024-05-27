@@ -1,8 +1,7 @@
 import express from 'express'
 const router = express.Router()
 
-router.get('/areas', (req, res)=>{
-    return res.status(200).json(req.app.get('mud_areas'))
-})
+import AreaController from './areas.js'
+router.get('/areas', AreaController)
 
 export default router

@@ -145,6 +145,12 @@ function areaToObject(area) {
     // After we parse the raw text into the object
     // we can delete it.
     delete area['#AREA']
+    delete area['#MOBILES']
+    delete area['#OBJECTS']
+    delete area['#ROOMS']
+    delete area['#RESETS']
+    delete area['#SHOPS']
+    delete area['#SPECIALS']
 }
 
 async function parseArea(areaFile) {
