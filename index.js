@@ -1,8 +1,13 @@
+import cors from 'cors'
 import http from 'http'
 import express from 'express'
 import mudsocket from './mudsocket.js'
 
+// TODO - CORS is currently setup in a wide-open
+//        mode. Production should probably limit origins.
 const app = express();
+app.use(cors());
+
 const server = http.createServer(app);
 
 // Attach API handling

@@ -6,12 +6,13 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev" : "node index.js"
+    "dev": "node index.js"
   },
   "author": "Mike Zahalan",
   "license": "ISC",
   "dependencies": {
     "ansi-to-html": "^0.7.2",
+    "cors": "^2.8.5",
     "express": "^4.19.2",
     "strip-ansi": "^7.1.0",
     "telnet-client": "^2.2.0",
