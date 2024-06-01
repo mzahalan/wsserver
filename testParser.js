@@ -16,8 +16,11 @@ function printRoomSection(area) {
     area.rooms.forEach((room) => {
         console.log(`${room.vnum} :: ${room.title}`)
         console.log(room.description)
-        console.log(room.unparsed)
-        console.log(room.flags)
+        console.log('Unparsed: ' + room.unparsed)
+        console.log('Flags: ' + room.flags)
+        console.log('Extras: ' + JSON.stringify(room.extra))
+        console.log('Exits: ' + JSON.stringify(room.exits))
+        console.log(`heal: ${room.healRate}, mana: ${room.manaRate}`)
     })
 }
 
@@ -30,7 +33,7 @@ function printAllRoomBlocks(areas) {
 }
 
 
-let trollden = await parseArea('unplugged.are')
-printRoomSection(trollden)
+let trollden = await parseArea('school.are')
+//printRoomSection(trollden)
 
 

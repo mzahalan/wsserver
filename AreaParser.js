@@ -23,7 +23,9 @@ function parseAreaBlock(area) {
     area.creator = afterRange.split(' ')[0]
     area.description = afterRange.replace(area.creator, '').replace('~', '').trim()
 
-    area.vnums = area['#AREA'][3].split(' ')
+    let vNums = area['#AREA'][3].split(' ')
+    area.vnumMin = parseInt(vNums[0])
+    area.vnumMax = parseInt(vNums[1])
     if(area['#AREA'].length > 4) {
         console.log(`PARSING ERROR: ${area.filename} - too many lines in AREA section`)
     }
@@ -63,7 +65,7 @@ function parseRoomsBlock(area) {
             return
         }
 
-        room.vnum = lines[i].trim().replace("#", '')
+        room.vnum = parseInt(lines[i].trim().replace("#", ''))
         i++
 
         room.title = lines[i].replace('~','').trim()
@@ -88,17 +90,81 @@ function parseRoomsBlock(area) {
         room.flags = flags[1]
         i++
 
-        room.unparsed = []
+        let unparsed = []
+        room.extra = []
+        room.exits = []
+        room.healRate = 100
+        room.manaRate = 100
 
         while('S' != lines[i].trim()) {
-            room.unparsed.push(lines[i].trim())
-            i++
-            if(i >= lines.length) {
-                console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: Missing S`)
+            if('E' == lines[i].trim()) {
+                i++
+                let extra = {}
+                extra.keywords = lines[i].replace('~', '')
+                extra.description = ''
+                i++
+                while('~' != lines[i].trim()) {
+                    extra.description = extra.description + lines[i]
+                    if(lines[i].trim().endsWith('~')) {
+                        break
+                    }
+                    i++
+                }
+                i++
+                room.extra.push(extra)
+            } else if (/^D[0-5]$/.test(lines[i].trim())) {
+                let exit = {}
+                exit.direction = lines[i]
+                i++
+
+                exit.description = ''
+                while('~' != lines[i].trim()) {
+                    exit.description = exit.description + lines[i]
+                    if(lines[i].trim().endsWith('~')) {
+                        break
+                    }
+                    i++
+                }
+                i++
+
+                exit.keyword = ''
+                while('~' != lines[i].trim()) {
+                    exit.keyword = exit.keyword + lines[i]
+                    if(lines[i].trim().endsWith('~')) {
+                        break
+                    }
+                    i++
+                }
+                i++
+                let roomInfo = lines[i].trim().split(/\s+/)
+                exit.locks = roomInfo[0]
+                exit.keys = roomInfo[1]
+                exit.destination = parseInt(roomInfo[2])
+                room.exits.push(exit)
+                i++
+            } else if (lines[i].startsWith('H')) {
+                let l = lines[i].trim().split(/\s+/)
+                room.healRate = parseInt(l[1])
+                if(l.length == 4 && l[2] == 'M') {
+                    room.manaRate = parseInt(l[3])
+                }
+                i++
+            } else if (lines[i].startsWith('O')) {
+                // This is to set the owner of a room... I'm just ignoring it for now.
+                i++
+            } 
+            else {
+                unparsed.push(lines[i].trim())
+                i++
+                if(i >= lines.length) {
+                    console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: Missing S`)
+                }
             }
         }
         i++
-
+        if(unparsed.length > 0) {
+            console.log("ERROR Parsing Room, Unhandled content: " + unparsed)
+        }
         area.rooms.push(room)
     }
 }
@@ -204,7 +270,12 @@ async function parseArea(areaFile) {
 }
 
 let areas = []
-
+function findAreaFromRoom(areas, vnum) {
+    for(const area of areas) {
+        if(area.vnumMin <= vnum && area.vnumMax >= vnum)
+            return area.name
+    }
+}
 async function parseAreas() {
     console.log("parsing area list")
     const file = readline.createInterface({
@@ -214,15 +285,31 @@ async function parseAreas() {
 
     for await (const line of file){
         if(line.endsWith(AREA_EXT)) {
+            process.stdout.write(`  ${line}`)
             if(EXCLUDE_LIST.includes(line)) {
-                console.log("    SKIPPING: " + line)
+                process.stdout.write(' \u001b[33mSkipped\u001b[0m\n')
                 continue
             }
 
-            process.stdout.write(`  ${line}`)
             areas.push(await parseArea(line))
             process.stdout.write(' \u001b[32m\u2713\u001b[0m\n')
         }      
+    }
+
+    // Build Connections
+    for(const area of areas) {
+        area.connections = []
+        for(const room of area.rooms) {
+            for(const exit of room.exits) {
+                if(exit.destination != -1 && exit.destination < area.vnumMin || exit.destination > area.vnumMax) {
+                    let destArea = findAreaFromRoom(areas, exit.destination)
+                    if(!area.connections.includes(destArea)) {
+                        area.connections.push(destArea)
+                    }
+                    //console.log(`Found a Connection: ${area.name}::${room.vnum} connects to: ${destArea}::${exit.destination}`)
+                }
+            }
+        }
     }
     return areas  
 }

@@ -7,9 +7,10 @@ export default (req, res) => {
             "range": area.range,
             "creator": area.creator,
             "description": area.description,
-            "vnumMin": parseInt(area.vnums[0]),
-            "vnumMax": parseInt(area.vnums[1]),
-            "numRooms": area.rooms.length
+            "vnumMin": parseInt(area.vnumMin),
+            "vnumMax": parseInt(area.vnumMax),
+            "numRooms": area.rooms.length,
+            "connections": area.connections
         }
     }))
 }
