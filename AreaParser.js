@@ -8,6 +8,8 @@ const AREA_LIST = "area.lst"
 
 const EXCLUDE_LIST = ["social.are", "rom.are", "group.are", "help.are"]
 
+const DIRECTION_MAP = {"D0":"N", "D1":"E", "D2":"S", "D3":"W", "D4":"U", "D5":"D"}
+
 const HEADERS = ["#AREA", "#MOBILES", "#OBJECTS", "#ROOMS", "#RESETS", "#SHOPS", "#SPECIALS", '#HELPS', '#SOCIALS']
 
 function parseAreaBlock(area) {
@@ -114,7 +116,7 @@ function parseRoomsBlock(area) {
                 room.extra.push(extra)
             } else if (/^D[0-5]$/.test(lines[i].trim())) {
                 let exit = {}
-                exit.direction = lines[i]
+                exit.direction = DIRECTION_MAP[lines[i].trim()]
                 i++
 
                 exit.description = ''
