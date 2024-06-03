@@ -31,16 +31,15 @@ class Iterator {
         return this.next().split(/\s+/)
     }
     readString() {
-        let myString = ""
-        while('~' != this.peek()) {
-            myString = myString + this.peek() + ' '
-            if(this.peek().endsWith('~')){
-                myString = myString.slice(0,-2)
+        let myString = ''
+        let newLine = ''
+        while(this.hasNext() && ((newLine = this.next()) != '~' )) {
+            myString = myString + ' ' + newLine
+            if(myString.endsWith('~')) {
+                myString = myString.slice(0,-1)
                 break
             }
-            this.pos++
         }
-        this.pos++
         return myString.trim()
     }
 }
