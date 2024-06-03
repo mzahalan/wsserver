@@ -33,6 +33,47 @@ function parseAreaBlock(area) {
     }
 }
 
+function readString(lines, i) {
+    let myString = ""
+    while('~' != lines[i].trim()) {
+        myString = myString + lines[i]
+        if(lines[i].trim().endsWith('~')) {
+            break
+        }
+        i++
+    }
+    i++
+    return [myString, i]
+}
+
+class Iterator {
+    constructor(lines) {
+        this.lines = lines
+        this.pos = 0
+    }
+    hasNext() {
+        return this.lines.length > this.pos
+    }
+    peak() {
+        return this.lines[this.pos].trim()
+    }
+    next() {
+        return this.lines[this.pos++].trim()
+    }
+    readString() {
+        let myString = ""
+        while('~' != this.peak()) {
+            myString = myString + this.peak()
+            if(this.peak().endsWith('~')){
+                break
+            }
+            this.pos++
+        }
+        this.pos++
+        return myString
+    }
+}
+
 // db.c load_rooms()
 function parseRoomsBlock(area) {
     // the first line is #<vnum>
@@ -105,39 +146,28 @@ function parseRoomsBlock(area) {
                 extra.keywords = lines[i].replace('~', '')
                 extra.description = ''
                 i++
-                while('~' != lines[i].trim()) {
-                    extra.description = extra.description + lines[i]
-                    if(lines[i].trim().endsWith('~')) {
-                        break
-                    }
-                    i++
-                }
-                i++
+
+                var [extraDesc, newPos] = readString(lines, i)
+                extra.description = extraDesc
+                i = newPos
+
                 room.extra.push(extra)
             } else if (/^D[0-5]$/.test(lines[i].trim())) {
                 let exit = {}
                 exit.direction = DIRECTION_MAP[lines[i].trim()]
                 i++
 
-                exit.description = ''
-                while('~' != lines[i].trim()) {
-                    exit.description = exit.description + lines[i]
-                    if(lines[i].trim().endsWith('~')) {
-                        break
-                    }
-                    i++
-                }
-                i++
+                var description
+                [description, newPos] = readString(lines, i)
+                exit.description = description
+                i = newPos
 
-                exit.keyword = ''
-                while('~' != lines[i].trim()) {
-                    exit.keyword = exit.keyword + lines[i]
-                    if(lines[i].trim().endsWith('~')) {
-                        break
-                    }
-                    i++
-                }
-                i++
+                var keyword
+                [keyword, newPos] = readString(lines,i)
+                exit.keyword = keyword
+                i = newPos
+
+
                 let roomInfo = lines[i].trim().split(/\s+/)
                 exit.locks = roomInfo[0]
                 exit.keys = roomInfo[1]
