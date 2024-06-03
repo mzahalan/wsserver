@@ -45,6 +45,48 @@ class Iterator {
         }
         return myString.trim()
     }
+    readWord() {
+        let lineArray = this.lines[this.pos].trim().split("")
+        let buffer = []
+
+        let endChar = lineArray.shift()
+        let char = ''
+
+        if(endChar != '"' && endChar != "'"){
+            char = endChar
+            endChar = ' '
+        } else {
+            char = lineArray.shift()
+        }
+
+        while(char != endChar) {
+            buffer.push(char)
+            if(lineArray.length == 0) {
+                break
+            }
+            char = lineArray.shift()
+        }
+
+        this.lines[this.pos] = lineArray.join("")
+        return buffer.join("")
+    }
+    readFlags() {
+        let lineArray = this.lines[this.pos].trim().split("")
+        let buffer = []
+        let char = lineArray.shift()
+        while(char != ' ') {
+            buffer.push(char)
+            if(lineArray.length == 0) {
+                break
+            }
+            char = lineArray.shift()
+        }
+        this.lines[this.pos] = lineArray.join("")
+        return buffer.join("") 
+    }
+    readNumber() {
+        return parseInt(this.readFlags())
+    }
 }
 
 function parseAreaBlock(area) {
@@ -280,7 +322,42 @@ function parseObjectsBlock(area) {
         mudObject.wearFlags = parts[2]
 
         // The next bits depend on the Object Type
-        mudObject.hardString = it.next()
+        if(mudObject.type == 'weapon') {
+            mudObject.weaponType = it.readWord()
+            mudObject.hitRoll = it.readNumber()
+            mudObject.damRoll = it.readNumber()
+            mudObject.attackType = it.readWord()
+            mudObject.weaponFlags = it.readFlags()
+            it.next()
+        } else if (['potion', 'pill', 'scroll'].includes(mudObject.type)) {
+            mudObject.affLevel = it.readNumber()
+            mudObject.aff0 = it.readWord()
+            mudObject.aff1 = it.readWord()
+            mudObject.aff2 = it.readWord()
+            mudObject.aff3 = it.readWord()
+            it.next()
+        } else if (mudObject.type == 'container') {
+            //50 0 0 5 100
+            mudObject.maxWeight = it.readNumber()
+            mudObject.state = it.readFlags()
+            mudObject.val2 = it.readNumber()
+            mudObject.maxItemWeight = it.readNumber()
+            mudObject.weightMultiplier = it.readNumber()
+            it.next()
+        } else if(mudObject.type == 'drink' || mudObject.type == 'fountain') {
+            //300 300 'beer' 0 0 
+            mudObject.capacity = it.readNumber()
+            mudObject.capacityNote = "If you set the capacity to 0, it won't decrement the amount remaining (ie: it's bottomless)"
+            mudObject.amountRemaining = it.readNumber()
+            mudObject.liquid = it.readWord()
+            mudObject.isPoison = it.readNumber()
+            mudObject.val4 = it.readNumber()
+            it.next()  
+        } else {
+            // TODO: WANDS db2.c ~454
+            mudObject.hardString = it.next()
+        }
+
 
         //Level | Weight | Cost | Condition
         parts = it.splitNext()
