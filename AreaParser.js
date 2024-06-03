@@ -27,6 +27,9 @@ class Iterator {
     next() {
         return this.lines[this.pos++].trim()
     }
+    nextVnum() {
+        return parseInt(this.next().replace('#', ''))
+    }
     splitNext() {
         return this.next().split(/\s+/)
     }
@@ -243,7 +246,72 @@ function parseMobsBlock(area) {
 }
 
 function parseObjectsBlock(area) {
+    area.objects = []
+    if(!area['#OBJECTS'] || area['#OBJECTS'].length == 0) {
+        return
+    }
 
+    let it = new Iterator(area['#OBJECTS'])
+
+    while(it.hasNext() && '#0' != it.peek()) {
+        if('' == it.peek()) {
+            it.next()
+            continue
+        }
+
+        if(!it.isAtVnum()) {
+            console.log('ERROR - Object Data outside VNUM')
+        }
+
+        let mudObject = {}
+        area.objects.push(mudObject)
+        mudObject.vum = it.nextVnum()
+        mudObject.unparsed = []
+
+        mudObject.name = it.readString()
+        mudObject.shortDescription = it.readString()
+        mudObject.description = it.readString() 
+        mudObject.material = it.readString()
+
+        //Type | Flags | Wear Flags
+        let parts = it.splitNext()
+        mudObject.type = parts[0]
+        mudObject.flags = parts[1]
+        mudObject.wearFlags = parts[2]
+
+        // The next bits depend on the Object Type
+        mudObject.hardString = it.next()
+
+        //Level | Weight | Cost | Condition
+        parts = it.splitNext()
+        mudObject.level = parseInt(parts[0])
+        mudObject.weight = parseInt(parts[1])
+        mudObject.cost = parseInt(parts[2])
+        mudObject.condition = parts[3]
+
+        // The Unparsed Stuff (The As, Fs, and Es)
+        mudObject.affects = []
+        mudObject.extras = []
+        while(it.hasNext() && !it.isAtVnum()) {
+            if('E' == it.peek()) {
+                it.next()
+                mudObject.extras.push({
+                    "keyword" : it.readString(),
+                    "description": it.readString()
+                })
+            } else if('A' == it.peek()) {
+                it.next()
+                parts = it.splitNext()
+                mudObject.affects.push({
+                    'location' : parts[0],
+                    'modifier' : parts[1]
+                })
+            } else {
+                mudObject.unparsed.push(it.next())
+            }
+            
+        }
+    }
 }
 
 function parseShopsBlock(area) {
