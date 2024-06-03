@@ -1,16 +1,43 @@
 import fs from 'fs'
 import readline from 'readline'
 
-
 const AREA_DIR = "../rom24-quickmud/area/"
 const AREA_EXT = ".are"
 const AREA_LIST = "area.lst"
 
 const EXCLUDE_LIST = ["social.are", "rom.are", "group.are", "help.are"]
-
 const DIRECTION_MAP = {"D0":"N", "D1":"E", "D2":"S", "D3":"W", "D4":"U", "D5":"D"}
-
 const HEADERS = ["#AREA", "#MOBILES", "#OBJECTS", "#ROOMS", "#RESETS", "#SHOPS", "#SPECIALS", '#HELPS', '#SOCIALS']
+
+// This is the best class ever created in javascript by anybody.
+class Iterator {
+    constructor(lines) {
+        this.lines = lines
+        this.pos = 0
+    }
+    hasNext() {
+        return this.lines.length > this.pos
+    }
+    peek() {
+        return this.lines[this.pos].trim()
+    }
+    next() {
+        return this.lines[this.pos++].trim()
+    }
+    readString() {
+        let myString = ""
+        while('~' != this.peek()) {
+            myString = myString + this.peek() + ' '
+            if(this.peek().endsWith('~')){
+                myString = myString.slice(0,-2)
+                break
+            }
+            this.pos++
+        }
+        this.pos++
+        return myString.trim()
+    }
+}
 
 function parseAreaBlock(area) {
     // AREA Section
@@ -21,7 +48,7 @@ function parseAreaBlock(area) {
     // syntax: { ALL|x-y|x y } <creator> <description>
     let line = area['#AREA'][2]
     let afterRange = line.split(/\} */g)[1]
-    area.range = line.replace(afterRange, '').replace('-', ' ').replace('{ ', '{').replace(' }', '}').trim()
+    area.range = line.replace(afterRange, '').replace('-', ' ').replace('{{','{').replace('{ ', '{').replace(' }', '}').trim()
     area.creator = afterRange.split(' ')[0]
     area.description = afterRange.replace(area.creator, '').replace('~', '').trim()
 
@@ -30,47 +57,6 @@ function parseAreaBlock(area) {
     area.vnumMax = parseInt(vNums[1])
     if(area['#AREA'].length > 4) {
         console.log(`PARSING ERROR: ${area.filename} - too many lines in AREA section`)
-    }
-}
-
-function readString(lines, i) {
-    let myString = ""
-    while('~' != lines[i].trim()) {
-        myString = myString + lines[i]
-        if(lines[i].trim().endsWith('~')) {
-            break
-        }
-        i++
-    }
-    i++
-    return [myString, i]
-}
-
-class Iterator {
-    constructor(lines) {
-        this.lines = lines
-        this.pos = 0
-    }
-    hasNext() {
-        return this.lines.length > this.pos
-    }
-    peak() {
-        return this.lines[this.pos].trim()
-    }
-    next() {
-        return this.lines[this.pos++].trim()
-    }
-    readString() {
-        let myString = ""
-        while('~' != this.peak()) {
-            myString = myString + this.peak()
-            if(this.peak().endsWith('~')){
-                break
-            }
-            this.pos++
-        }
-        this.pos++
-        return myString
     }
 }
 
@@ -83,10 +69,10 @@ function parseRoomsBlock(area) {
         return
     }
 
-    let lines = area['#ROOMS']
-    let i = 0
-    while(i != lines.length) {
-        let line = lines[i].trim()
+    let it = new Iterator(area['#ROOMS'])
+
+    while(it.hasNext()) {
+        let line = it.peek()
 
         // END OF #ROOMS
         if('#0' == line) {
@@ -95,7 +81,7 @@ function parseRoomsBlock(area) {
 
         // Skip Empty Lines
         if('' == line) {
-            i++
+            it.next()
             continue
         }
 
@@ -108,30 +94,19 @@ function parseRoomsBlock(area) {
             return
         }
 
-        room.vnum = parseInt(lines[i].trim().replace("#", ''))
-        i++
-
-        room.title = lines[i].replace('~','').trim()
-        i++
-
-        // It might be more efficient to get (startIndex, endIndex) then do a subarray().join('\n)
-        room.description = ''
-        while('~' != lines[i].trim()) {
-            room.description = room.description.concat(lines[i].trim(), '\n')
-            i++
-        }
-        i++
+        room.vnum = parseInt(it.next().replace("#", ''))
+        room.title = it.readString()
+        room.description = it.readString()
 
         // Flags: <area_number> <flags> <sector type>
         // sector types: merc.h ~1322
-        let flags = lines[i].split(' ')
+        let flags = it.next().split(' ')
         if(flags.length != 3) {
             console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: bad flags`)
             return
         }
         room.sector_type = flags[2].trim()
         room.flags = flags[1]
-        i++
 
         let unparsed = []
         room.extra = []
@@ -139,61 +114,45 @@ function parseRoomsBlock(area) {
         room.healRate = 100
         room.manaRate = 100
 
-        while('S' != lines[i].trim()) {
-            if('E' == lines[i].trim()) {
-                i++
+        while('S' != it.peek()) {
+            if('E' == it.peek()) {
+                it.next()
                 let extra = {}
-                extra.keywords = lines[i].replace('~', '')
-                extra.description = ''
-                i++
-
-                var [extraDesc, newPos] = readString(lines, i)
-                extra.description = extraDesc
-                i = newPos
-
+                //extra.keywords = it.next().replace('~', '')
+                extra.keywords = it.readString()
+                extra.description = it.readString()
                 room.extra.push(extra)
-            } else if (/^D[0-5]$/.test(lines[i].trim())) {
+
+            } else if (/^D[0-5]$/.test(it.peek())) {
                 let exit = {}
-                exit.direction = DIRECTION_MAP[lines[i].trim()]
-                i++
+                exit.direction = DIRECTION_MAP[it.next()]
+                exit.description = it.readString()
+                exit.keyword = it.readString()
 
-                var description
-                [description, newPos] = readString(lines, i)
-                exit.description = description
-                i = newPos
-
-                var keyword
-                [keyword, newPos] = readString(lines,i)
-                exit.keyword = keyword
-                i = newPos
-
-
-                let roomInfo = lines[i].trim().split(/\s+/)
+                let roomInfo = it.next().split(/\s+/)
                 exit.locks = roomInfo[0]
                 exit.keys = roomInfo[1]
                 exit.destination = parseInt(roomInfo[2])
                 room.exits.push(exit)
-                i++
-            } else if (lines[i].startsWith('H')) {
-                let l = lines[i].trim().split(/\s+/)
+
+            } else if (it.peek().startsWith('H')) {
+                let l = it.next().split(/\s+/)
                 room.healRate = parseInt(l[1])
                 if(l.length == 4 && l[2] == 'M') {
                     room.manaRate = parseInt(l[3])
                 }
-                i++
-            } else if (lines[i].startsWith('O')) {
+            } else if (it.peek().startsWith('O')) {
                 // This is to set the owner of a room... I'm just ignoring it for now.
-                i++
+                it.next()
             } 
             else {
-                unparsed.push(lines[i].trim())
-                i++
-                if(i >= lines.length) {
+                unparsed.push(it.next())
+                if(!it.hasNext()) {
                     console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: Missing S`)
                 }
             }
         }
-        i++
+        it.next()
         if(unparsed.length > 0) {
             console.log("ERROR Parsing Room, Unhandled content: " + unparsed)
         }
@@ -284,7 +243,7 @@ async function parseArea(areaFile) {
             }
 
             // Add to the content block.
-            if(! area[key]) {
+            if(!area[key]) {
                 console.log("Invalid State in " + areaFile)
                 console.log("Missing Key: " + key)
                 continue
@@ -338,7 +297,6 @@ async function parseAreas() {
                     if(!area.connections.includes(destArea)) {
                         area.connections.push(destArea)
                     }
-                    //console.log(`Found a Connection: ${area.name}::${room.vnum} connects to: ${destArea}::${exit.destination}`)
                 }
             }
         }
