@@ -200,7 +200,7 @@ function parseMobsBlock(area) {
         mob.damType = parts[5]
 
         //Armor Classes: Pierce, Bash, Slash, Exotic
-        parts = it.splitNext()
+        parts = it.splitNext().map(p => parseInt(p))
         mob.armorClass = {
             "pierce" : parts[0],
             "bash"   : parts[1],
