@@ -261,14 +261,14 @@ function parseShopsBlock(area) {
             continue
         }
 
-        let parts = it.splitNext()
+        let parts = it.splitNext().slice(0,10).map(p => parseInt(p))
         area.shops.push({
-            "keeper"     : parseInt(parts[0]),
-            "buyType"    : [parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]), parseInt(parts[5])],
-            "profitBuy"  : parseInt(parts[6]),
-            "profitSell" : parseInt(parts[7]),
-            "hourOpen"   : parseInt(parts[8]),
-            "hourClosed" : parseInt(parts[9])
+            "keeper"     : parts[0],
+            "buyType"    : [parts[1], parts[2], parts[3], parts[4], parts[5]],
+            "profitBuy"  : parts[6],
+            "profitSell" : parts[7],
+            "hourOpen"   : parts[8],
+            "hourClosed" : parts[9]
         })
     }
 }
@@ -323,8 +323,7 @@ function areaToObject(area) {
     parseHelps(area)
     parseSocials(area)
 
-    // After we parse the raw text into the object
-    // we can delete it.
+    // After we parse the raw text into the object we can delete it.
     delete area['#AREA']
     delete area['#MOBILES']
     delete area['#OBJECTS']
