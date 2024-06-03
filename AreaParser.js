@@ -15,6 +15,9 @@ class Iterator {
         this.lines = lines
         this.pos = 0
     }
+    isAtVnum() {
+        return /^#\d+$/.test(this.peek())
+    }
     hasNext() {
         return this.lines.length > this.pos
     }
@@ -23,6 +26,9 @@ class Iterator {
     }
     next() {
         return this.lines[this.pos++].trim()
+    }
+    splitNext() {
+        return this.next().split(/\s+/)
     }
     readString() {
         let myString = ""
@@ -71,16 +77,10 @@ function parseRoomsBlock(area) {
 
     let it = new Iterator(area['#ROOMS'])
 
-    while(it.hasNext()) {
-        let line = it.peek()
-
-        // END OF #ROOMS
-        if('#0' == line) {
-            return
-        }
+    while(it.hasNext() && '#0' != it.peek()) {
 
         // Skip Empty Lines
-        if('' == line) {
+        if('' == it.peek()) {
             it.next()
             continue
         }
@@ -89,7 +89,7 @@ function parseRoomsBlock(area) {
         let room = {}
         
         // Scan to Start of Room (#XXXX)
-        if(! /^#\d+$/.test(line)) {
+        if(!it.isAtVnum()) {
             console.log(`PARSING ERROR: ${area.name} :: Expected Room #VNUM but found :: ${line}`)
             return
         }
@@ -100,7 +100,7 @@ function parseRoomsBlock(area) {
 
         // Flags: <area_number> <flags> <sector type>
         // sector types: merc.h ~1322
-        let flags = it.next().split(' ')
+        let flags = it.splitNext()
         if(flags.length != 3) {
             console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: bad flags`)
             return
@@ -129,14 +129,14 @@ function parseRoomsBlock(area) {
                 exit.description = it.readString()
                 exit.keyword = it.readString()
 
-                let roomInfo = it.next().split(/\s+/)
+                let roomInfo = it.splitNext()
                 exit.locks = roomInfo[0]
                 exit.keys = roomInfo[1]
                 exit.destination = parseInt(roomInfo[2])
                 room.exits.push(exit)
 
             } else if (it.peek().startsWith('H')) {
-                let l = it.next().split(/\s+/)
+                let l = it.splitNext()
                 room.healRate = parseInt(l[1])
                 if(l.length == 4 && l[2] == 'M') {
                     room.manaRate = parseInt(l[3])
@@ -161,7 +161,86 @@ function parseRoomsBlock(area) {
 }
 
 function parseMobsBlock(area) {
+    area.mobs = []
+    if(!area['#MOBILES'] || area['#MOBILES'].length == 0) {
+        return
+    }
 
+    let it = new Iterator(area['#MOBILES'])
+
+    while(it.hasNext() && '#0' != it.peek()) {
+        if('' == it.peek()) {
+            it.next()
+            continue
+        }
+
+        // First Line of a Mob.
+        let mob = {}
+        mob.vnum = parseInt(it.next().replace('#', ''))
+        mob.keywords = it.readString().replace('oldstyle ', '')
+        mob.shortDescription = it.readString()
+        mob.longDescription = it.readString()
+        mob.description = it.readString()
+        mob.race = it.readString()
+
+        // act affect alignment group
+        let parts = it.splitNext()
+        mob.act = parts[0]
+        mob.affect = parts[1]
+        mob.alignment = parseInt(parts[2])
+        mob.group = parseInt(parts[3])
+
+        //Level Hitroll HitDice ManaDice DamageDice DamageType
+        parts = it.splitNext()
+        mob.level = parseInt(parts[0])
+        mob.hitRoll = parseInt(parts[1])
+        mob.hitDice = parts[2]
+        mob.manaDice = parts[3]
+        mob.damDice = parts[4]
+        mob.damType = parts[5]
+
+        //Armor Classes: Pierce, Bash, Slash, Exotic
+        parts = it.splitNext()
+        mob.armorClass = {
+            "pierce" : parts[0],
+            "bash"   : parts[1],
+            "slash"  : parts[2],
+            "exotic" : parts[3]
+        }
+
+        //Flags: OFF, IMM, RES, VULN
+        parts = it.splitNext()
+        mob.offFlags = parts[0]
+        mob.immFlags = parts[1]
+        mob.resFlags = parts[2]
+        mob.vulnFlags = parts[3]
+
+        //Start Position | Default Position | Gender | Wealth
+        parts = it.splitNext()
+        mob.startPosition = parts[0]
+        mob.defaultPostion = parts[1]
+        mob.gender = parts[2]
+        mob.wealth = parseInt(parts[3])
+
+        //Form | Parts | Size | Material
+        parts = it.splitNext()
+        mob.size = parts[2]
+
+        mob.unparsed = []
+        while(!it.isAtVnum()) {
+
+            // Skip the flags for body parts.
+            if(it.peek().startsWith("F par")) {
+                it.next()
+                continue
+            }
+
+            //console.log(`Unparsed data for mob: ${mob.keywords} :: ${it.peek()}`)
+            mob.unparsed.push(it.next())
+        }
+
+        area.mobs.push(mob)
+    }
 }
 
 function parseObjectsBlock(area) {
@@ -169,7 +248,29 @@ function parseObjectsBlock(area) {
 }
 
 function parseShopsBlock(area) {
+    area.shops = []
+    if(!area['#SHOPS'] || area['#SHOPS'].length == 0) {
+        return
+    }
 
+    let it = new Iterator(area['#SHOPS'])
+
+    while(it.hasNext() && '0' != it.peek()) {
+        if('' == it.peek()) {
+            it.next()
+            continue
+        }
+
+        let parts = it.splitNext()
+        area.shops.push({
+            "keeper"     : parseInt(parts[0]),
+            "buyType"    : [parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3]), parseInt(parts[4]), parseInt(parts[5])],
+            "profitBuy"  : parseInt(parts[6]),
+            "profitSell" : parseInt(parts[7]),
+            "hourOpen"   : parseInt(parts[8]),
+            "hourClosed" : parseInt(parts[9])
+        })
+    }
 }
 
 function parseResetsBlock(area) {
@@ -177,7 +278,30 @@ function parseResetsBlock(area) {
 }
 
 function parseSpecialsBlock(area) {
+    area.specials = []
+    if(!area['#SPECIALS'] || area['#SPECIALS'].length == 0) {
+        return
+    }
 
+    let it = new Iterator(area['#SPECIALS'])
+    while(it.hasNext() && 'S' != it.peek()) {
+        if('' == it.peek()) {
+            continue
+        }
+
+        let parts = it.splitNext()
+
+        // The Mud Only Supports Mob Specials
+        if(! 'M' == parts[0]) {
+            console.log(`Found a Non Mob Special ${parts}`)
+            continue
+        }
+
+        area.specials.push({
+            "mob" : parseInt(parts[1]),
+            "ability" : parts[2]
+        })
+    }
 }
 
 function parseHelps(area) {
