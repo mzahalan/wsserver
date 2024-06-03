@@ -89,37 +89,39 @@ class Iterator {
     }
 }
 
-function parseAreaBlock(area) {
-    // AREA Section
-    area.filename = area['#AREA'][0].replace('~', '')
-    area.name = area['#AREA'][1].replace('~', '')
+function parseAreaBlock(block) {
+    if(!block || block.length == 0) {
+        return {}
+    }
+    let area = {}
+    let it = new Iterator(block)
+
+    area.filename = it.readString()
+    area.name = it.readString()
 
     // This is the hard part...
     // syntax: { ALL|x-y|x y } <creator> <description>
-    let line = area['#AREA'][2]
+    let line = it.next()
     let afterRange = line.split(/\} */g)[1]
     area.range = line.replace(afterRange, '').replace('-', ' ').replace('{{','{').replace('{ ', '{').replace(' }', '}').trim()
     area.creator = afterRange.split(' ')[0]
     area.description = afterRange.replace(area.creator, '').replace('~', '').trim()
 
-    let vNums = area['#AREA'][3].split(' ')
+    let vNums = it.splitNext()
     area.vnumMin = parseInt(vNums[0])
     area.vnumMax = parseInt(vNums[1])
-    if(area['#AREA'].length > 4) {
-        console.log(`PARSING ERROR: ${area.filename} - too many lines in AREA section`)
-    }
+
+    return area
 }
 
 // db.c load_rooms()
-function parseRoomsBlock(area) {
-    // the first line is #<vnum>
-    // the last line is S
-    area.rooms = []
-    if(!area['#ROOMS'] || area['#ROOMS'].length == 0) {
-        return
+function parseRoomsBlock(block) {
+    if(!block || block.length == 0) {
+        return []
     }
 
-    let it = new Iterator(area['#ROOMS'])
+    let rooms = []
+    let it = new Iterator(block)
 
     while(it.hasNext() && '#0' != it.peek()) {
 
@@ -147,7 +149,7 @@ function parseRoomsBlock(area) {
         let flags = it.splitNext()
         if(flags.length != 3) {
             console.log(`PARSING ERROR: ${area.name} :: Room: ${room.vnum} :: bad flags`)
-            return
+            return rooms
         }
         room.sector_type = flags[2].trim()
         room.flags = flags[1]
@@ -200,17 +202,18 @@ function parseRoomsBlock(area) {
         if(unparsed.length > 0) {
             console.log("ERROR Parsing Room, Unhandled content: " + unparsed)
         }
-        area.rooms.push(room)
+        rooms.push(room)
     }
+    return rooms
 }
 
-function parseMobsBlock(area) {
-    area.mobs = []
-    if(!area['#MOBILES'] || area['#MOBILES'].length == 0) {
-        return
+function parseMobsBlock(block) {
+    if(!block || block.length == 0) {
+        return []
     }
 
-    let it = new Iterator(area['#MOBILES'])
+    let mobs = []
+    let it = new Iterator(block)
 
     while(it.hasNext() && '#0' != it.peek()) {
         if('' == it.peek()) {
@@ -283,17 +286,18 @@ function parseMobsBlock(area) {
             mob.unparsed.push(it.next())
         }
 
-        area.mobs.push(mob)
+        mobs.push(mob)
     }
+    return mobs
 }
 
-function parseObjectsBlock(area) {
-    area.objects = []
-    if(!area['#OBJECTS'] || area['#OBJECTS'].length == 0) {
-        return
+function parseObjectsBlock(block) {
+    if(!block || block.length == 0) {
+        return []
     }
 
-    let it = new Iterator(area['#OBJECTS'])
+    let objects = []
+    let it = new Iterator(block)
 
     while(it.hasNext() && '#0' != it.peek()) {
         if('' == it.peek()) {
@@ -306,7 +310,7 @@ function parseObjectsBlock(area) {
         }
 
         let mudObject = {}
-        area.objects.push(mudObject)
+        objects.push(mudObject)
         mudObject.vum = it.nextVnum()
         mudObject.unparsed = []
 
@@ -389,15 +393,16 @@ function parseObjectsBlock(area) {
             
         }
     }
+    return objects
 }
 
-function parseShopsBlock(area) {
-    area.shops = []
-    if(!area['#SHOPS'] || area['#SHOPS'].length == 0) {
-        return
+function parseShopsBlock(block) {
+    if(!block || block.length == 0) {
+        return []
     }
 
-    let it = new Iterator(area['#SHOPS'])
+    let shops = []
+    let it = new Iterator(block)
 
     while(it.hasNext() && '0' != it.peek()) {
         if('' == it.peek()) {
@@ -406,7 +411,7 @@ function parseShopsBlock(area) {
         }
 
         let parts = it.splitNext().slice(0,10).map(p => parseInt(p))
-        area.shops.push({
+        shops.push({
             "keeper"     : parts[0],
             "buyType"    : [parts[1], parts[2], parts[3], parts[4], parts[5]],
             "profitBuy"  : parts[6],
@@ -415,19 +420,71 @@ function parseShopsBlock(area) {
             "hourClosed" : parts[9]
         })
     }
+    return shops
 }
 
-function parseResetsBlock(area) {
+function parseResetsBlock(block) {
+    if(!block || block.length == 0) {
+        return []
+    }
+    
+    let resets = []
+    let it = new Iterator(block)
+    while(it.hasNext() && 'S' != it.peek() ) {
+        if('' == it.peek()) {
+            continue
+        }
 
+        let reset = {}
+        resets.push(reset)
+        reset.command = it.readFlags()
+        it.readNumber()
+
+/*
+ *   'M': read a mobile 
+ *   'O': read an object
+ *   'P': put object in object
+ *   'G': give object to mobile
+ *   'E': equip object to mobile
+ *   'D': set state of door
+ *   'R': randomize room exits
+ */
+        if(reset.command == 'M') {
+            reset.MobVnum   = it.readNumber()
+            reset.maxCount  = it.readNumber()
+            reset.RoomVnum  = it.readNumber()
+            reset.roomCount = it.readNumber()
+        } else if(reset.command == 'O') {
+            reset.ObjVnum   = it.readNumber()
+            reset.arg2      = it.readNumber()
+            reset.RoomVnum  = it.readNumber()
+        } else {
+            reset.arg1 = it.readNumber()
+            reset.arg2 = it.readNumber()
+            
+            if(reset.command == 'G' || reset.command == 'R') {
+                reset.arg3 = 0
+            } else {
+                reset.arg3 = it.readNumber()
+            }
+            if(reset.command == 'P' || reset.command == 'M') {
+                reset.arg4 = it.readNumber()
+            } else {
+                reset.arg4 = 0
+            }
+        }
+        reset.note = it.next()
+    }
+    return resets
 }
 
-function parseSpecialsBlock(area) {
-    area.specials = []
-    if(!area['#SPECIALS'] || area['#SPECIALS'].length == 0) {
-        return
+function parseSpecialsBlock(block) {
+    if(!block || block.length == 0) {
+        return []
     }
 
-    let it = new Iterator(area['#SPECIALS'])
+    let specials = []
+    let it = new Iterator(block)
     while(it.hasNext() && 'S' != it.peek()) {
         if('' == it.peek()) {
             continue
@@ -441,40 +498,26 @@ function parseSpecialsBlock(area) {
             continue
         }
 
-        area.specials.push({
+        specials.push({
             "mob" : parseInt(parts[1]),
             "ability" : parts[2]
         })
     }
+
+    return specials
 }
 
-function parseHelps(area) {
-
-}
-
-function parseSocials(area) {
-
-}
-
-function areaToObject(area) {
-    parseAreaBlock(area)
-    parseRoomsBlock(area)
-    parseMobsBlock(area)
-    parseObjectsBlock(area)
-    parseShopsBlock(area)
-    parseResetsBlock(area)
-    parseSpecialsBlock(area)
-    parseHelps(area)
-    parseSocials(area)
-
-    // After we parse the raw text into the object we can delete it.
-    delete area['#AREA']
-    delete area['#MOBILES']
-    delete area['#OBJECTS']
-    delete area['#ROOMS']
-    delete area['#RESETS']
-    delete area['#SHOPS']
-    delete area['#SPECIALS']
+function areaToObject(fileBlocks) {
+    const area = parseAreaBlock(fileBlocks['#AREA'])
+    area.rooms = parseRoomsBlock(fileBlocks['#ROOMS'])
+    area.mobs = parseMobsBlock(fileBlocks['#MOBILES'])
+    area.objects = parseObjectsBlock(fileBlocks['#OBJECTS'])
+    area.shops = parseShopsBlock(fileBlocks['#SHOPS'])
+    area.resets = parseResetsBlock(fileBlocks['#RESETS'])
+    area.specials = parseSpecialsBlock(fileBlocks['#SPECIALS'])
+    
+    //Ignoring HELPS and SOCIALS
+    return area
 }
 
 async function parseArea(areaFile) {
@@ -522,9 +565,7 @@ async function parseArea(areaFile) {
             console.log(e)
         }
     }
-
-    areaToObject(area)
-    return area
+    return areaToObject(area)
 }
 
 let areas = []
