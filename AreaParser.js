@@ -552,13 +552,6 @@ async function parseArea(areaFile) {
                 continue
             }
 
-            // Add to the content block.
-            if(!area[key]) {
-                console.log("Invalid State in " + areaFile)
-                console.log("Missing Key: " + key)
-                continue
-            }
-
             area[key].push(line)
         } catch(e) {
             console.log("Error Parsing file: " + areaFile)
