@@ -241,7 +241,7 @@ function parseMobsBlock(block) {
         parts = it.splitNext()
         mob.level = parseInt(parts[0])
         mob.hitRoll = parseInt(parts[1])
-        mob.hitDice = parts[2]
+        mob.hpDice = parts[2]
         mob.manaDice = parts[3]
         mob.damDice = parts[4]
         mob.damType = parts[5]
