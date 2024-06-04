@@ -568,7 +568,6 @@ async function parseArea(areaFile) {
     return areaToObject(area)
 }
 
-let areas = []
 function findAreaFromRoom(areas, vnum) {
     for(const area of areas) {
         if(area.vnumMin <= vnum && area.vnumMax >= vnum)
@@ -576,6 +575,7 @@ function findAreaFromRoom(areas, vnum) {
     }
 }
 async function parseAreas() {
+    let areas = []
     console.log("parsing area list")
     const file = readline.createInterface({
         input: fs.createReadStream(AREA_DIR.concat(AREA_LIST)),
